@@ -1,0 +1,33 @@
+{
+  "name": "static",
+  "authors": [
+    "Didzis Gosko <didzis@users.noreply.github.com>"
+  ],
+  "description": "",
+  "main": "",
+  "moduleType": [],
+  "license": "MIT",
+  "homepage": "",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jquery": "~2.1.4",
+    "angular": "~1.4.7",
+    "bootstrap": "~3.3.5",
+    "angular-bootstrap": "angular-ui-bootstrap-bower#~0.14.2",
+    "spin.js": "~2.3.2",
+    "angular-ui-event": "~1.0.0"
+  },
+  "install": {
+    "path": "app/components",
+    "sources": {
+      "bootstrap": "bower_components/bootstrap/dist/**"
+    }
+  }
+}

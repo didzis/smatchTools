@@ -1,0 +1,577 @@
+<!doctype html>
+<html ng-app="app">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+	<title>VisualSMATCH</title>
+
+	<script src="components/jquery/jquery.js" charset="utf-8"></script>
+	<script src="components/angular/angular.js" charset="utf-8"></script>
+	<script src="components/bootstrap/js/bootstrap.js" charset="utf-8"></script>
+	<script src="components/angular-bootstrap/ui-bootstrap-tpls.js" charset="utf-8"></script>
+	<script src="components/spin.js/spin.js" charset="utf-8"></script>
+	<script src="components/angular-ui-event/event.js" charset="utf-8"></script>
+
+	<link rel="stylesheet" href="components/bootstrap/css/bootstrap.css" charset="utf-8" />
+
+	<link rel="stylesheet" href="css/app.css" charset="utf-8" />
+	<link rel="stylesheet" href="css/table.css" charset="utf-8" />
+	<link rel="stylesheet" href="css/resizer.css" charset="utf-8" />
+
+	<script src="directives/dropzone.js" charset="utf-8"></script>
+	<script src="directives/spin.js" charset="utf-8"></script>
+	<script src="directives/fileselect.js" charset="utf-8"></script>
+	<script src="directives/resizer.js" charset="utf-8"></script>
+
+	<script src="main.js" charset="utf-8"></script>
+
+</head>
+<body ng-controller="AppController" class="fill" dropzone="dummyDrop">
+<div id="main" class="fill no-sel-x">
+
+	<div class="fill" style-x="left: 210px; margin: 10px; margin-right: 0px; " ng-show="true" resizer="vertical" position="200px" visible="true" follow-bottom>
+		<div resizer-left-pane max-size="" min-size="200px" class="widget-border-x" style="outline: none">
+
+	<div class="fill widget-border-x" style="width-x: 200px; margin: 10px; margin-right: 0px">
+		<tabset vertical="false" class="compact">
+			<tab heading="Sentences" active="state.sentencesTab">
+				<div class="fill top-compact-tabs" style="padding-top: 6px">
+					<strong>Precision:</strong> {{document.precision*100 | number : 3 }} %<br/>
+					<strong>Recall:</strong> {{document.recall*100 | number : 3 }} %<br/>
+					<strong>Best F-Score:</strong> {{document.best_f_score*100 | number : 3 }} %<br/>
+					<strong>Good:</strong> {{document.good }}<br/>
+					<strong>Skipped:</strong> {{document.skipped }}<br/>
+					<label>1st sort: 
+					<select ng-options="item.id as item.title for item in sortByOptions" ng-model="state.sortBy"
+						ng-change="sort(state.sortBy, state.sortBy2)"></select>
+					</label>
+					<label>2nd sort: 
+					<select ng-options="item.id as item.title for item in sortByOptions2" ng-model="state.sortBy2"
+						ng-change="sort(state.sortBy, state.sortBy2)"></select>
+					</label>
+					<!-- <div class="fill widget&#45;border list" style="margin&#45;top: 54px" -->
+					<!-- <div class="fill widget&#45;border list" style="margin&#45;top: 14px" -->
+					<input type="text" style="top: 132px; width: 100%" placeholder="Filter text... (press Enter)"
+						ng-model="state.filterText" ui-event="{keypress: filterKeypress}" />
+					<!-- <div class="fill widget&#45;border list" style="margin&#45;top: 96px" -->
+					<div class="fill widget-border list" style="margin-top: 182px"
+						dropzone-x="fileDrop" dropzone-valid="fileDropValid" drag-over-class="gray">
+						<div class="list-item shorten"
+							ng-class="((selectedSentence == sentence)?'selected ':'')+sentenceClass(sentence)"
+							ng-repeat="sentence in sentences" ng-click="selectSentence(sentence, $index)"
+							title="{{$index}}. {{sentence.gold.text || sentence.silver.text}}">
+							<strong>{{sentence.nr}}. [{{sentence.best_f_score*100 | number : 0 }}%]</strong> {{sentence.gold.text || sentence.silver.text }}
+							<!-- <strong>{{$index+1}}</strong>. {{sentence.gold.text}} -->
+						</div>
+						<div class="" ng-show="loadingSentences" style="position: absolute; z-index: 100; top: 50%; left: 50%">
+							<spin class="fill" ng-model="loadingSentences"
+								options="{lines:13, length:19, width:8, radius:18, corners:1.0, rotate:0, trail:60, speed:1.2, direction:1}"
+								style="z-index: 100; width: 100%; height: 100%"></spin>
+						</div>
+					</div>
+				</div>
+			</tab>
+			<tab heading="Other" active="state.otherTab">
+				<div class="fill top-compact-tabs" style="padding-top: 6px">
+					<div style="padding-top: 6px;">
+						<button class="btn btn-default btn-xs" ng-click="reset()">Reset Data</button>
+						<label style="font-weight: normal; padding: 4px">
+							<input type="checkbox" ng-model="settings.deterministic" />
+							Deterministic SMATCH
+						</label>
+					</div>
+					<div style="padding-top: 4px;">
+						<button class="btn btn-default btn-xs" ng-click="loadTestData()">Load Sample Data</button>
+					</div>
+					<div style="padding-top: 14px;">
+						<label style="font-weight: normal; padding: 4px">
+							<input type="checkbox" ng-model="settings.inline_rules" />
+							Inline Rules
+						</label>
+					</div>
+					<div>
+					<br/>
+					Visual SMATCH for AMR <br/>
+					by <a href="http://c60.ailab.lv/" target="_blank">AI lab</a>
+					</div>
+				</div>
+			</tab>
+		</tabset>
+	</div>
+
+		</div>
+		<div resizer-right-pane max-size="90%" min-size="0px" class="widget-border-x">
+
+	<div class="fill" style="left-x: 210px; margin: 10px; margin-left: 0px " ng-show="true" resizer="horizontal" position="70%" visible="true" follow-bottom>
+		<div resizer-top-pane max-size="" min-size="100px" class="widget-border" style="outline: none">
+
+	<!-- <div class="fill widget&#45;border" style="left: 200px; margin&#45;left: 10px; overflow&#45;yx: scroll; overflow&#45;xx: hidden; padding: 10px"> -->
+	<div class="fill widget-border-x" style="overflow-yx: hidden; overflow-xx: hidden; padding: 10px">
+		<!-- <div class="fill widget&#45;border" style="left: 200px; margin&#45;left: 10px; overflow&#45;y: scroll; overflow&#45;x: hidden; padding: 10px"> -->
+		<div class="fill widget-border-x" style="overflow-y: scroll; overflow-x: hidden; padding: 10px" ng-show="selectedSentence">
+
+			<!-- <strong>Sentence {{selectedSentenceIndex+1}}.</strong> -->
+			<strong>Sentence {{selectedSentence.n}}.</strong>
+			<br/>
+
+			<div class="full-row" style="">
+				<div style="text-align: center">
+					<strong>Filenames</strong>
+				</div>
+			</div>
+			<div class="full-row" style="">
+				<div class="row-left" style="">
+					<pre style="word-break: normal; word-wrap: normal; white-space: pre-wrap; border: none; background-color: #fff; font-weight: bold">{{leftFileName}}</pre>
+					<!-- {{selectedSentence.gold.text}} -->
+				</div><div class="row-right" style="">
+					<pre style="word-break: normal; word-wrap: normal; white-space: pre-wrap; border: none; background-color: #fff; font-weight: bold">{{rightFileName}}</pre>
+					<!-- {{selectedSentence.gold.text}} -->
+				</div>
+			</div>
+			<!-- <br/> -->
+
+
+			<div class="full-row" style="">
+				<div style="text-align: center">
+					<strong>Text</strong>
+				</div>
+			</div>
+			<div class="full-row" style="">
+				<div class="row-left" style="">
+					<pre style="word-break: normal; word-wrap: normal; white-space: pre-wrap">{{selectedSentence.gold.text}}</pre>
+					<!-- {{selectedSentence.gold.text}} -->
+				</div><div class="row-right" style="">
+					<pre style="word-break: normal; word-wrap: normal; white-space: pre-wrap">{{selectedSentence.silver.text}}</pre>
+					<!-- {{selectedSentence.gold.text}} -->
+				</div>
+			</div>
+			<br/>
+
+			<div class="full-row" style="">
+				<div style="text-align: center">
+					<strong>AMR</strong>
+				</div>
+			</div>
+			<div class="full-row" style="">
+				<div class="row-left" style="">
+					<!-- <pre style="overflow&#45;x: auto; word&#45;wrap: normal; white&#45;space: pre">{{selectedSentence.gold.amr_string}}</pre> -->
+					<pre ng-class="{'pre-wrap':selectedSentence.gold.single_line_amr, 'pre-nowrap':!selectedSentence.gold.single_line_amr}"
+						style="overflow-x: auto; word-wrap: normal">{{selectedSentence.gold.amr_string}}</pre>
+				</div><div class="row-right" style="">
+					<!-- <pre style="overflow&#45;x: auto; word&#45;wrap: normal; white&#45;space: pre">{{selectedSentence.silver.amr_string}}</pre> -->
+					<pre ng-class="{'pre-wrap':selectedSentence.silver.single_line_amr, 'pre-nowrap':!selectedSentence.silver.single_line_amr}"
+						style="overflow-x: auto; word-wrap: normal">{{selectedSentence.silver.amr_string}}</pre>
+				</div>
+			</div>
+			<br/>
+
+			<!-- <div class="full&#45;row" style=""> -->
+			<!-- 	<div style="text&#45;align: center"> -->
+			<!-- 		<!&#45;&#45; <strong>Root Instance</strong> &#45;&#45;> -->
+			<!-- 		<strong>Precision:</strong> {{selectedSentence.precision*100 | number : 3 }} %<br/> -->
+			<!-- 		<strong>Recall:</strong> {{selectedSentence.recall*100 | number : 3 }} %<br/> -->
+			<!-- 		<strong>Best F&#45;Score:</strong> {{selectedSentence.best_f_score*100 | number : 3 }} %<br/> -->
+			<!-- 	</div> -->
+			<!-- </div> -->
+			<div class="section round-border-x" style="background-color: #ffffff; width: 240px; margin-left: -120px">
+				<div class="row-x">
+					<div class="cell-x cell-left">
+						<strong>Precision:</strong>
+					</div><div class="cell-x cell-right">
+						{{selectedSentence.precision*100 | number : 3 }} %
+					</div>
+				</div>
+				<div class="row-x">
+					<div class="cell-x cell-left">
+						<strong>Recall:</strong>
+					</div><div class="cell-x cell-right">
+						{{selectedSentence.recall*100 | number : 3 }} %
+					</div>
+				</div>
+				<div class="row-x">
+					<div class="cell-x cell-left">
+						<strong>Best F-Score:</strong>
+					</div><div class="cell-x cell-right">
+						{{selectedSentence.best_f_score*100 | number : 3 }} %
+					</div>
+				</div>
+				<!-- <div class="section&#45;cell&#45;separator"></div> -->
+			</div>
+			<br/>
+
+			<div class="full-row" style="">
+				<div style="text-align: center">
+					<strong>Root Instance</strong>
+				</div>
+			</div>
+			<div class="section round-border"
+				ng-show="selectedSentence.gold.top || selectedSentence.silver.top">
+				<div class="row">
+					<div class="cell cell-left">
+						<span ng-show="selectedSentence.gold.top">
+							{{selectedSentence.gold.top}} / {{selectedSentence.gold.instances[selectedSentence.gold.top]}}
+						</span>
+						<span ng-hide="selectedSentence.gold.top">
+							<em style="color: #aaa">no top instance</em>
+						</span>
+					</div><div class="cell cell-right">
+						<span ng-show="selectedSentence.silver.top">
+							{{selectedSentence.silver.top}} / {{selectedSentence.silver.instances[selectedSentence.silver.top]}}
+						</span>
+						<span ng-hide="selectedSentence.silver.top">
+							<em style="color: #aaa">no top instance</em>
+						</span>
+					</div>
+				</div>
+				<div class="section-cell-separator"></div>
+			</div>
+			<div class="full-row" style=""
+				ng-hide="selectedSentence.gold.top || selectedSentence.silver.top">
+				<div style="text-align: center">
+					<em style="color: #aaa">no top instances</em>
+				</div>
+			</div>
+			<br/>
+
+			<div class="full-row" style="">
+				<div style="text-align: center">
+					<strong>Instances</strong>
+				</div>
+			</div>
+			<div class="section round-border"
+				ng-show="selectedSentence.matched_instances.length+selectedSentence.gold_only_instances.length+selectedSentence.silver_only_instances.length > 0">
+				<div class="row" ng-repeat="instance in selectedSentence.matched_instances track by $index">
+					<div class="cell cell-left">
+						{{instance[0][0]}} / {{instance[0][1]}}
+					</div><div class="cell cell-right">
+						{{instance[1][0]}} / {{instance[1][1]}}
+					</div>
+				</div>
+				<div class="row" ng-repeat="instance in selectedSentence.silver_only_instances track by $index">
+					<div class="cell cell-left">
+						<em style="color: #aaa">no matching instance</em>
+					</div><div class="cell cell-right">
+						{{instance[0]}} / {{instance[1]}}
+					</div>
+				</div>
+				<div class="row" ng-repeat="instance in selectedSentence.gold_only_instances track by $index">
+					<div class="cell cell-left">
+						{{instance[0]}} / {{instance[1]}}
+					</div><div class="cell cell-right">
+						<em style="color: #aaa">no matching instance</em>
+					</div>
+				</div>
+				<div class="section-cell-separator"></div>
+			</div>
+			<div class="full-row" style=""
+				ng-hide="selectedSentence.matched_instances.length+selectedSentence.gold_only_instances.length+selectedSentence.silver_only_instances.length > 0">
+				<div style="text-align: center">
+					<em style="color: #aaa">no instances</em>
+				</div>
+			</div>
+			<br/>
+
+			<div class="full-row" style="">
+				<div style="text-align: center">
+					<strong>Attributes</strong>
+				</div>
+			</div>
+			<div class="section round-border" style="z-index: 500"
+				ng-show="selectedSentence.gold.attributes.length > 0 || selectedSentence.silver.attributes.length > 0">
+				<div class="row" ng-repeat="attribute in selectedSentence.matched_attributes track by $index">
+					<div class="cell cell-left">
+						<!-- ({{relation.left[1]}}, {{relation.left[0]}}, {{relation.left[2]}}) -->
+						{{attribute[0][1]}} / {{selectedSentence.gold.instances[attribute[0][1]]}}
+						<strong>{{attribute[0][0]}}</strong>
+						<em>{{attribute[0][2]}}</em>
+					</div><div class="cell cell-right">
+						<!-- ({{relation.right[1]}}, {{relation.right[0]}}, {{relation.right[2]}}) -->
+						{{attribute[1][1]}} / {{selectedSentence.silver.instances[attribute[1][1]]}}
+						<strong>{{attribute[1][0]}}</strong>
+						<em>{{attribute[1][2]}}</em>
+					</div>
+					<div class="rule-overlay" style="" ng-if="settings.inline_rules">
+						<div ng-repeat="rule in match_attribute_rules(attribute[2])">
+							<strong>class:</strong> {{::rule.class}}, <strong>score:</strong> {{::rule.w | number: 4}},
+							<strong>yes/no:</strong> {{::rule.yes}}/{{::rule.no}}
+							<strong>data:</strong>
+							<span ng-repeat="(name,value) in ::rule.data">
+								<em>{{::name}}</em> = {{::value}}<span ng-if="::!$last">, </span>
+							</span>
+						</div>
+					</div>
+				</div>
+				<div class="row" ng-repeat="attribute in selectedSentence.silver_only_attributes track by $index" style="z-index: auto">
+					<div class="cell cell-left">
+						<em style="color: #aaa">no matching attribute</em>
+					</div><div class="cell cell-right">
+						<!-- ({{relation[1]}}, {{relation[0]}}, {{relation[2]}}) -->
+						{{attribute[1]}} / {{selectedSentence.silver.instances[attribute[1]]}}
+						<strong>{{attribute[0]}}</strong>
+						<em>{{attribute[2]}}</em>
+					</div>
+					<div class="rule-overlay" style="" ng-if="settings.inline_rules">
+						<div ng-repeat="rule in match_attribute_rules(attribute[3])">
+							<strong>class:</strong> {{::rule.class}}, <strong>score:</strong> {{::rule.w | number: 4}},
+							<strong>yes/no:</strong> {{::rule.yes}}/{{::rule.no}}
+							<strong>data:</strong>
+							<span ng-repeat="(name,value) in ::rule.data">
+								<em>{{::name}}</em> = {{::value}}<span ng-if="::!$last">, </span>
+							</span>
+						</div>
+					</div>
+				</div>
+				<div class="row" ng-repeat="attribute in selectedSentence.gold_only_attributes track by $index">
+					<div class="cell cell-left">
+						<!-- ({{relation[1]}}, {{relation[0]}}, {{relation[2]}}) -->
+						{{attribute[1]}} / {{selectedSentence.gold.instances[attribute[1]]}}
+						<strong>{{attribute[0]}}</strong>
+						<em>{{attribute[2]}}</em>
+					</div><div class="cell cell-right">
+						<em style="color: #aaa">no matching attribute</em>
+					</div>
+					<div class="rule-overlay" style="" ng-if="settings.inline_rules">
+						<div ng-repeat="rule in match_attribute_rules(attribute[3])">
+							<strong>class:</strong> {{::rule.class}}, <strong>score:</strong> {{::rule.w | number: 4}},
+							<strong>yes/no:</strong> {{::rule.yes}}/{{::rule.no}}
+							<strong>data:</strong>
+							<span ng-repeat="(name,value) in ::rule.data">
+								<em>{{::name}}</em> = {{::value}}<span ng-if="::!$last">, </span>
+							</span>
+						</div>
+					</div>
+				</div>
+				<div class="section-cell-separator" style="z-index: auto"></div>
+			</div>
+			<div class="full-row" style=""
+				ng-hide="selectedSentence.gold.attributes.length > 0 || selectedSentence.silver.attributes.length > 0">
+				<div style="text-align: center">
+					<em style="color: #aaa">no attributes</em>
+				</div>
+			</div>
+			<!-- <div class="section round&#45;border&#45;x" -->
+			<!-- 	style="background&#45;color: #ffffff; width&#45;x: 800px; margin&#45;left&#45;x: &#45;400px; padding&#45;left: 10px; padding&#45;top: 10px"> -->
+			<!-- 	<div ng&#45;repeat="rule in document.attribute_rules" style=""> -->
+			<!-- 		<strong>class:</strong> {{::rule.class}}, <strong>score:</strong> {{::rule.w | number: 4}}, -->
+			<!-- 		<strong>yes/no:</strong> {{::rule.yes}}/{{::rule.no}} -->
+			<!-- 		<strong>data:</strong> -->
+			<!-- 		<span ng&#45;repeat="(name,value) in ::rule.data"> -->
+			<!-- 			<em>{{::name}}</em> = {{::value}}<span ng&#45;if="::!$last">, </span> -->
+			<!-- 		</span> -->
+			<!-- 	</div> -->
+			<!-- </div> -->
+			<br/>
+
+			<div class="full-row" style="">
+				<div style="text-align: center">
+					<strong>Relations</strong>
+				</div>
+			</div>
+			<div class="section round-border" style=""
+				ng-show="selectedSentence.gold.relations.length > 0 || selectedSentence.silver.relations.length > 0">
+				<div class="row" ng-repeat="relation in selectedSentence.matched_relations track by $index">
+					<div class="cell cell-left">
+						<!-- {{relation.left[0]}}, {{relation.left[1]}}, {{relation.left[2]}} -->
+						<!-- ({{relation.left[1]}} / {{selectedSentence.left.instances[relation.left[1]]}}, -->
+						<!-- {{relation.left[0]}}, -->
+						<!-- {{relation.left[2]}} / {{selectedSentence.left.instances[relation.left[2]]}}) -->
+						{{relation[0][1]}} / {{selectedSentence.gold.instances[relation[0][1]]}}
+						<strong>{{relation[0][0]}}</strong>
+						{{relation[0][2]}} / {{selectedSentence.gold.instances[relation[0][2]]}}
+					</div><div class="cell cell-right">
+						<!-- {{relation.right[0]}}, {{relation.right[1]}}, {{relation.right[2]}} -->
+						<!-- ({{relation.right[1]}} / {{selectedSentence.right.instances[relation.right[1]]}}, -->
+						<!-- {{relation.right[0]}}, -->
+						<!-- {{relation.right[2]}} / {{selectedSentence.right.instances[relation.right[2]]}}) -->
+						{{relation[1][1]}} / {{selectedSentence.silver.instances[relation[1][1]]}}
+						<strong>{{relation[0][0]}}</strong>
+						{{relation[1][2]}} / {{selectedSentence.silver.instances[relation[1][2]]}}
+					</div>
+					<div class="rule-overlay" style="" ng-if="settings.inline_rules">
+						<div ng-repeat="rule in match_relation_rules(relation[2])">
+							<strong>class:</strong> {{::rule.class}}, <strong>score:</strong> {{::rule.w | number: 4}},
+							<strong>yes/no:</strong> {{::rule.yes}}/{{::rule.no}}
+							<strong>data:</strong>
+							<span ng-repeat="(name,value) in ::rule.data">
+								<em>{{::name}}</em> = {{::value}}<span ng-if="::!$last">, </span>
+							</span>
+						</div>
+					</div>
+				</div>
+				<div class="row" ng-repeat="relation in selectedSentence.silver_only_relations track by $index">
+					<div class="cell cell-left">
+						<em style="color: #aaa">no matching relation</em>
+					</div><div class="cell cell-right">
+						<!-- {{relation[0]}}, {{relation[1]}}, {{relation[2]}} -->
+						<!-- ({{relation[1]}} / {{selectedSentence.right.instances[relation[1]]}}, -->
+						<!-- {{relation[0]}}, -->
+						<!-- {{relation[2]}} / {{selectedSentence.right.instances[relation[2]]}}) -->
+						{{relation[1]}} / {{selectedSentence.silver.instances[relation[1]]}}
+						<strong>{{relation[0]}}</strong>
+						{{relation[2]}} / {{selectedSentence.silver.instances[relation[2]]}}
+					</div>
+					<div class="rule-overlay" style="" ng-if="settings.inline_rules">
+						<div ng-repeat="rule in match_relation_rules(relation[3])">
+							<strong>class:</strong> {{::rule.class}}, <strong>score:</strong> {{::rule.w | number: 4}},
+							<strong>yes/no:</strong> {{::rule.yes}}/{{::rule.no}}
+							<strong>data:</strong>
+							<span ng-repeat="(name,value) in ::rule.data">
+								<em>{{::name}}</em> = {{::value}}<span ng-if="::!$last">, </span>
+							</span>
+						</div>
+					</div>
+				</div>
+				<div class="row" ng-repeat="relation in selectedSentence.gold_only_relations track by $index">
+					<div class="cell cell-left">
+						<!-- {{relation[0]}}, {{relation[1]}}, {{relation[2]}} -->
+						<!-- ({{relation[1]}} / {{selectedSentence.left.instances[relation[1]]}}, -->
+						<!-- {{relation[0]}}, -->
+						<!-- {{relation[2]}} / {{selectedSentence.left.instances[relation[2]]}}) -->
+						{{relation[1]}} / {{selectedSentence.gold.instances[relation[1]]}}
+						<strong>{{relation[0]}}</strong>
+						{{relation[2]}} / {{selectedSentence.gold.instances[relation[2]]}}
+					</div><div class="cell cell-right">
+						<em style="color: #aaa">no matching relation</em>
+					</div>
+					<div class="rule-overlay" style="" ng-if="settings.inline_rules">
+						<div ng-repeat="rule in match_relation_rules(relation[3])">
+							<strong>class:</strong> {{::rule.class}}, <strong>score:</strong> {{::rule.w | number: 4}},
+							<strong>yes/no:</strong> {{::rule.yes}}/{{::rule.no}}
+							<strong>data:</strong>
+							<span ng-repeat="(name,value) in ::rule.data">
+								<em>{{::name}}</em> = {{::value}}<span ng-if="::!$last">, </span>
+							</span>
+						</div>
+					</div>
+				</div>
+				<div class="section-cell-separator"></div>
+			</div>
+			<div class="full-row" style=""
+				ng-hide="selectedSentence.gold.relations.length > 0 || selectedSentence.silver.relations.length > 0">
+				<div style="text-align: center">
+					<em style="color: #aaa">no relations</em>
+				</div>
+			</div>
+			<!-- <div class="section round&#45;border&#45;x" -->
+			<!-- 	style="background&#45;color: #ffffff; width&#45;x: 800px; margin&#45;left&#45;x: &#45;400px; padding&#45;left: 10px; padding&#45;top: 10px"> -->
+			<!-- 	<div ng&#45;repeat="rule in document.relation_rules" style=""> -->
+			<!-- 		<strong>class:</strong> {{::rule.class}}, <strong>score:</strong> {{::rule.w | number: 4}}, -->
+			<!-- 		<strong>yes/no:</strong> {{::rule.yes}}/{{::rule.no}} -->
+			<!-- 		<strong>data:</strong> -->
+			<!-- 		<span ng&#45;repeat="(name,value) in ::rule.data"> -->
+			<!-- 			<em>{{::name}}</em> = {{::value}}<span ng&#45;if="::!$last">, </span> -->
+			<!-- 		</span> -->
+			<!-- 	</div> -->
+			<!-- </div> -->
+			<br/>
+			<br/>
+		</div>
+		<div class="fill" style="background: white" ng-hide="sentences || parsingLeftRight || error">
+			<div class="fill drop-panel" style="width: calc(50% - 2px)" ng-class="{'file-loaded': leftFileName}"
+				dropzone="fileDropLeft" dropzone-valid="fileDropValid" drag-over-class="gray-dashed">
+				<div class="big-title" style="position: absolute; text-align: center; top: calc(50% - 10px); width: 100%">
+					<div ng-hide="leftFileName || loadingLeft">Drop GOLD AMR file here</div>
+					<div ng-show="leftFileName && !loadingLeft">{{leftFileName}} loaded</div>
+					<spin class="fill" ng-model="loadingLeft"
+						options="{lines:13, length:19, width:8, radius:9, corners:1.0, rotate:0, trail:60, speed:1.2, direction:1}"
+						style="z-index: 100; width: 100%; height: 100%"></spin>
+				</div>
+			</div>
+			<div class="fill drop-panel" style="left: calc(50% + 2px)" ng-class="{'file-loaded': rightFileName}"
+				dropzone="fileDropRight" dropzone-valid="fileDropValid" drag-over-class="gray-dashed">
+				<div class="big-title" style="position: absolute; text-align: center; top: calc(50% - 10px); width: 100%">
+					<div ng-hide="rightFileName || loadingRight">Drop SILVER/TEST AMR file here</div>
+					<div ng-show="rightFileName && !loadingRight">{{rightFileName}} loaded</div>
+					<spin class="fill" ng-model="loadingRight"
+						options="{lines:13, length:19, width:8, radius:9, corners:1.0, rotate:0, trail:60, speed:1.2, direction:1}"
+						style="z-index: 100; width: 100%; height: 100%"></spin>
+				</div>
+			</div>
+		</div>
+		<div class="big-title" style="position: absolute; text-align: center; top: 50%; width: 100%" ng-hide="selectedSentence || !sentences || error">
+			Select sentence in left panel
+		</div>
+		<div class="" ng-show="parsingLeftRight || !error" style="position: absolute; z-index: 100; top: 50%; left: 50%">
+			<spin class="fill" ng-model="parsingLeftRight"
+				options="{lines:13, length:19, width:8, radius:18, corners:1.0, rotate:0, trail:60, speed:1.2, direction:1}"
+				style="z-index: 100; width: 100%; height: 100%"></spin>
+		</div>
+		<div class="fill" style="background: #eee" ng-show="error">
+			<div class="big-title" style="position: absolute; text-align: center; top: 50%; width: 100%">
+				{{error}} <br/> Click <a href="/" ng-click="reset()">here</a> to reset
+			</div>
+		</div>
+	</div>
+
+		</div>
+		<div resizer-bottom-pane max-size="90%" min-size="0px" class="widget-border">
+			<div class="fill widget-border-x" style="overflow-y: scroll; overflow-x: hidden; padding: 10px" ng-show="document">
+				<div class="full-row" style="">
+					<div style="text-align: center">
+						<strong>Instance Rules</strong>
+					</div>
+				</div>
+				<div class="section round-border-x"
+					style="background-color: #ffffff; width-x: 800px; margin-left-x: -400px; padding-left: 10px; padding-top: 10px">
+					<div ng-repeat="rule in document.instance_rules" style="">
+						<strong>class:</strong> {{::rule.class}}, <strong>score:</strong> {{::rule.w | number: 4}},
+						<strong>yes/no:</strong> {{::rule.yes}}/{{::rule.no}}
+						<strong>data:</strong>
+						<span ng-repeat="(name,value) in ::rule.data">
+							<em>{{::name}}</em> = {{::value}}<span ng-if="::!$last">, </span>
+						</span>
+					</div>
+				</div>
+				<br/>
+				<br/>
+				<br/>
+				<div class="full-row" style="">
+					<div style="text-align: center">
+						<strong>Attribute Rules</strong>
+					</div>
+				</div>
+				<div class="section round-border-x"
+					style="background-color: #ffffff; width-x: 800px; margin-left-x: -400px; padding-left: 10px; padding-top: 10px">
+					<div ng-repeat="rule in document.attribute_rules" style="">
+						<strong>class:</strong> {{::rule.class}}, <strong>score:</strong> {{::rule.w | number: 4}},
+						<strong>yes/no:</strong> {{::rule.yes}}/{{::rule.no}}
+						<strong>data:</strong>
+						<span ng-repeat="(name,value) in ::rule.data">
+							<em>{{::name}}</em> = {{::value}}<span ng-if="::!$last">, </span>
+						</span>
+					</div>
+				</div>
+				<br/>
+				<br/>
+				<br/>
+
+				<div class="full-row" style="">
+					<div style="text-align: center">
+						<strong>Relation Rules</strong>
+					</div>
+				</div>
+				<div class="section round-border-x"
+					style="background-color: #ffffff; width-x: 800px; margin-left-x: -400px; padding-left: 10px; padding-top: 10px">
+					<div ng-repeat="rule in document.relation_rules" style="">
+						<strong>class:</strong> {{::rule.class}}, <strong>score:</strong> {{::rule.w | number: 4}},
+						<strong>yes/no:</strong> {{::rule.yes}}/{{::rule.no}}
+						<strong>data:</strong>
+						<span ng-repeat="(name,value) in ::rule.data">
+							<em>{{::name}}</em> = {{::value}}<span ng-if="::!$last">, </span>
+						</span>
+					</div>
+				</div>
+			</div>
+
+		</div>
+		<div resizer-handle size="10" class="resize-handle" ng-class="{resizing: resizing}"></div>
+	</div>
+
+		</div>
+		<div resizer-handle size="10" class="resize-handle" ng-class="{resizing: resizing}"></div>
+	</div>
+
+
+</div>	<!-- main -->
+</body>
+</html>

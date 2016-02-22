@@ -1,0 +1,31 @@
+/*
+ * © 2014, 2015 Didzis Goško, Institute of Mathematics and Computer Science, University of Latvia
+ * (LU aģentūra "Latvijas Universitātes Matemātikas un informātikas institūts")
+ * 
+ * All rights reserved.
+ *
+ */
+
+/* @import url("common.css"); */
+
+/*  http://stackoverflow.com/a/8469671 */
+html.resizing-horizontal,html.resizing-horizontal * { cursor: ew-resize !important; }
+html.resizing-vertical,html.resizing-vertical * { cursor: ns-resize !important; }
+
+
+/* color shema */
+
+.resize-handle:hover {
+	background-color: #efefef;
+}
+.resize-handle.resizing {
+	background-color: #efefef;
+}
+
+.resize-handle-dark:hover {
+	background-color: #dfdfdf;
+}
+.resize-handle-dark.resizing {
+	background-color: #dfdfdf;
+}
+

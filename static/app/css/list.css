@@ -1,0 +1,101 @@
+
+.list {
+	/* overflow-x: hidden; */
+	overflow-y: scroll;
+	padding: 2px;
+}
+
+.list-item {
+	padding: 3px;
+	border: 2px solid rgba(0,0,0,0);
+}
+
+.list-item.selected {
+	/* padding: 2px; */
+	/* border: 2px solid #aaa; */
+	border: 2px solid #999;
+	/* background-color: #eee; */
+}
+
+.list-item.selected:hover {
+	/* padding: 2px; */
+	/* border: 2px solid #aaa; */
+	border: 2px solid #999;
+	/* background-color: #eee; */
+}
+
+.list-item:hover {
+	/* padding: 3px; */
+	border: 2px solid #ccc;
+	/* background-color: #ddd; */
+}
+
+.list-item-error {
+	background-color: rgba(255,0,0,0.5);
+}
+
+.list-item-highlighted {
+	background-color: rgba(200,255,200,0.5);
+}
+
+.list-item-busy {
+	animation: list-item-busy-blink 1s ease-in 0s infinite alternate;
+	-webkit-animation: list-item-busy-blink 1s ease-in 0s infinite alternate;
+	-moz-animation: list-item-busy-blink 1s ease-in 0s infinite alternate;
+}
+
+/* .selected.list-item-busy { */
+/* 	animation: selected-list-item-busy-blink 1s ease-in 0s infinite alternate; */
+/* 	-webkit-animation: selected-list-item-busy-blink 1s ease-in 0s infinite alternate; */
+/* 	-moz-animation: selected-list-item-busy-blink 1s ease-in 0s infinite alternate; */
+/* } */
+
+
+@keyframes list-item-busy-blink {
+	/* 0% { background-color: rgba(255,0,0,0.5); } */
+	0% { background-color: #FFCF40; }
+	100% {  }
+}
+
+@-webkit-keyframes list-item-busy-blink {
+	/* 0% { background-color: rgba(255,0,0,0.5); } */
+	0% { background-color: #FFCF40; }
+	100% {  }
+}
+
+@-moz-keyframes list-item-busy-blink {
+	/* 0% { background-color: rgba(255,0,0,0.5); } */
+	0% { background-color: #FFCF40; }
+	100% {  }
+}
+
+/* @keyframes selected-list-item-busy-blink { */
+	/* 0% { background-color: rgba(255,0,0,0.5); } */
+/* 	0% { background-color: #FFCF40; } */
+/* 	100% { background-color: #eee; } */
+/* } */
+
+/* @-webkit-keyframes selected-list-item-busy-blink { */
+	/* 0% { background-color: rgba(255,0,0,0.5); } */
+/* 	0% { background-color: #FFCF40; } */
+/* 	100% { background-color: #eee; } */
+/* } */
+
+/* @-moz-keyframes selected-list-item-busy-blink { */
+	/* 0% { background-color: rgba(255,0,0,0.5); } */
+/* 	0% { background-color: #FFCF40; } */
+/* 	100% { background-color: #eee; } */
+/* } */
+
+
+/* list as dropzone */
+
+.dropzone.over {
+	border-width: 2px;
+	border-style: dashed;
+}
+
+.dropzone.list.over {
+	padding: 1px;
+}
+

@@ -1,0 +1,185 @@
+/*
+ * © 2014, 2015 Didzis Goško, Institute of Mathematics and Computer Science, University of Latvia
+ * (LU aģentūra "Latvijas Universitātes Matemātikas un informātikas institūts")
+ * 
+ * All rights reserved.
+ *
+ */
+
+/* positioning & spacing */
+
+.hidden {
+	display: none;
+}
+
+.fill {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+}
+
+.full-size {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+}
+
+.top-tabs {
+	top: 48px;
+}
+
+.top-compact-tabs {
+	top: 32px;
+}
+
+.margin-left {
+	margin-left: 10px;
+}
+
+.margin-top {
+	margin-top: 10px;
+}
+
+.pane-fill {
+	position: absolute;
+	top: 38px;
+	bottom: 0;
+	left: 0;
+	right: 0;
+}
+
+
+/* overflow */
+
+.overflow-hidden {
+	overflow: hidden;
+}
+
+.overflow-scroll {
+	overflow: scroll;
+}
+
+
+/* borders */
+
+.widget-border {
+	border: 1px solid #ddd;
+}
+
+.widget-border-left {
+	border-left: 1px solid #ddd;
+}
+
+.widget-border-right {
+	border-right: 1px solid #ddd;
+}
+
+
+/* development borders */
+
+.dev-border {
+	border: 1px solid black;
+}
+
+.dev-border-red {
+	border: 1px solid red;
+}
+
+.dev-border-blue {
+	border: 1px solid blue;
+}
+
+.dev-border-green {
+	border: 1px solid green;
+}
+
+
+/* text selection */
+
+.no-sel {
+    /* disable selection */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+
+	cursor: default;
+}
+
+.text-sel {
+    /* enable text selection */
+    -webkit-touch-callout: text;
+    -webkit-user-select: text;
+    -khtml-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+
+	/* cursor: default; */
+}
+
+
+/* text layout */
+
+.shorten {
+	/* max-width: 200px; */
+	overflow: hidden;
+	text-overflow: ellipsis;
+	/* text-align: center; */
+	white-space: nowrap;
+}
+
+
+/* geometrically precise text rendering for syntax tree graphic */
+text {
+	text-rendering: geometricPrecision;
+}
+
+
+/* .animated { */
+/* 	/* transition: all 0.15s ease-in-out; */ */
+/* 	/* -webkit-transition: all 0.15s ease-in-out; */ */
+/* 	/* -moz-transition: all 0.15s ease-in-out; */ */
+/* 	/* -o-transition: all 0.15s ease-in-out; */ */
+/* 	/* -ms-transition: all 0.15s ease-in-out; */ */
+/*  */
+/* 	-webkit-animation-duration: 0.8s; */
+/* 	   -moz-animation-duration: 0.8s; */
+/* 	     -o-animation-duration: 0.8s; */
+/* 	        animation-duration: 0.8s; */
+/* 	-webkit-animation-fill-mode: both; */
+/* 	   -moz-animation-fill-mode: both; */
+/* 	     -o-animation-fill-mode: both; */
+/* 	        animation-fill-mode: both; */
+/* } */
+/*  */
+
+/* .fade { */
+/* 	/* animation: fadeout 0.5s; */ */
+/* 	/* -webkit-animation: fadeout 0.5s; */ */
+/* } */
+
+.animated.fade.in {
+	/* opacity: 1; */
+	animation: fadein 0.5s;
+	-webkit-animation: fadein 0.5s;
+}
+
+.tab-pane.active {
+	animation: fadein 0.5s;
+	-webkit-animation: fadein 0.5s;
+}
+
+@-webkit-keyframes fadein {
+	0% { opacity: 0; }
+	100% { opacity: 1; }
+}
+
+@-webkit-keyframes fadeout {
+	0% { opacity: 1; }
+	100% { opacity: 0; }
+}
