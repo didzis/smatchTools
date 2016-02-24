@@ -1,16 +1,33 @@
 # SMATCH Tools
 VisualSMATCH and AMR ensemble voting tool based on [SMATCH](http://amr.isi.edu/evaluation.html).
 
-It provides user interface for computed SMATCH results, it also employs [C6.0](http://c60.ailab.lv/) classifier to show systematic (mis)alignments (as rules) between triplets of AMR graphs as seen by SMATCH.
-
-To run install [docker](https://www.docker.com/) first and execute in terminal:
+Ready to run [docker](https://www.docker.com/) image available at dockerhub:
 
 ```
-$ ./vsmatch.sh
+docker run -it -p 9000:9000 didzis/visualsmatch
 ```
-Point your browser either to [http://localhost:9000](http://localhost:9000) or the URL that is shown on screen (in case you are not running it under Linux).
+On Linux open [http://localhost:9000](http://localhost:9000), on MacOS X or Windows open [http://192.168.99.100:9000](http://192.168.99.100:9000). Alternatively, execute: ```$ ./vsmatch.sh``` and point your browser to the URL that is shown on the screen.
 
-### Building docker image from source
+# Description
+VisualSMATCH provides user interface for computed SMATCH results, it also employs [C6.0](http://c60.ailab.lv/) classifier to show systematic (mis)alignments (as rules) between triplets of AMR graphs as seen by SMATCH.
+For details see:
+
+```
+@InProceedings{gbarzdins-dgosko:2016:NAACL-HLT,
+  author    = {Barzdins, Guntis and  Gosko, Didzis},
+  title     = {RIGA: Impact of Smatch Extensions and Character-Level Neural Translation on AMR Parsing Accuracy},
+  booktitle = {Proceedings of the 2016 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies},
+  month     = {June},
+  year      = {2016},
+  address   = {San Diego, California},
+  publisher = {Association for Computational Linguistics},
+  pages     = {to appear},
+  url       = {to appear}
+}
+```
+
+
+# Building docker image from source
 To build your own image, inside project directory execute:
 
 ```

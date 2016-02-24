@@ -38,6 +38,10 @@ if [ "$DOCKER_MACHINE_NAME" != "" ] && [ "`which docker-machine`" != "" ]; then
 	echo
 	echo "VisualSMATCH will be available at address http://`docker-machine ip $DOCKER_MACHINE_NAME`:$port"
 	echo
+else
+	echo
+	echo "VisualSMATCH will be available at address http://localhost:$port"
+	echo
 fi
 
 docker run -it -p $port:9000 $@ didzis/visualsmatch
