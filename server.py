@@ -1,96 +1,137 @@
 #!/usr/bin/env python3
 
 import sys, os, json, io
-import asyncio
 import argparse
+import asyncio
 
-from bottle import Bottle, abort, static_file, run, auth_basic, hook
+from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import parse_qs
+
+from aiohttp import web
 
 import smatch_api
 from rules import generate_document_rules
 
-try:
-    asyncio.tasks.CoroWrapper = asyncio.tasks.coroutines.CoroWrapper # quickfix for bottle
-except:
-    pass
-
 port = 9000
 host = '0.0.0.0'
 
-parser = argparse.ArgumentParser(description='VisualSMATCH server', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--host', type=str, default=host, help='listen host ip, 0.0.0.0 for all interfaces')
-parser.add_argument('--port', type=int, default=port, help='listen port number')
+processor = smatch_api.AMRProcessor()
+threadpool = ThreadPoolExecutor(2)
 
-args = parser.parse_args()
+async def parse_test(request):
 
+    qs = parse_qs(request.query_string)
 
-app = Bottle()
+    try: seed = int(qs.get('seed'))
+    except: seed = None
 
+    # start response right away to send keep-alive header
+    headers = {}
+    headers['Connection'] = 'Keep-Alive'
+    headers['Keep-Alive'] = 'timeout=1500, max=100'
+    content_type = 'application/json; charset=utf-8'
+    headers['Content-Type'] = content_type
+    response = web.StreamResponse(headers=headers)
+    response.prepare(request)
+    response.start(request)
 
-# https://gist.github.com/richard-flosi/3789163
-# @app.hook('after_request')
-@app.hook('before_request')
-def keep_alive(request, response):
-    response.headers['Connection'] = 'Keep-Alive'
-    response.headers['Keep-Alive'] = 'timeout=1500, max=100'
-    # print(response.headers)
-    # for k,v in response.headers.items():
-    #     print(k, ':', v)
-
-@app.get('/api/test_data')
-def test_amr(request, response):
-    # sample data from: http://amr.isi.edu/download/amr-bank-struct-v1.5.txt
     with open("sample.gold", encoding='utf8', errors='replace') as gf, open("sample.silver", encoding='utf8', errors='replace') as sf:
-        seed = request.query.get('seed')
-        if not seed:
-            seed = None
-        else:
-            try:
-                seed = int(seed)
-            except:
-                seed = None
-        smatch_api.smatch.seed = seed
-        document = smatch_api.make_matched_document(gf, sf, False)
+        document = await processor(gf, sf, False, seed=seed)
         print("ok")
-    generate_document_rules(document)
-    response.status = '200 OK'
-    response.content_type = 'application/json; charset=utf-8'
-    data = json.dumps(document, indent=4)
-    print('Sending data...')
-    return data
 
-@app.get('/api/parse_match_amr')
-@app.post('/api/parse_match_amr')
-def parse_match_amr(request, response):
-    data = json.loads(request.body.read().decode('utf8', errors='ignore'))
+    # generate_document_rules(document)
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(threadpool, lambda document: generate_document_rules(document), document)
+
+    print('Sending response...')
+    # write response data
+    response.write(json.dumps(document, indent=4, ensure_ascii=False).encode('utf8'))
+    await response.write_eof()
+    await response.drain()
+    print('Response sent!')
+
+    return response
+    # return web.Response(body=json.dumps(document, indent=4, ensure_ascii=False).encode('utf8'), content_type=content_type)
+
+
+async def parse_match_amr(request):
+
+    data = json.loads((await request.read()).decode('utf8', errors='ignore'))
+
+    qs = parse_qs(request.query_string)
+
+    try: seed = int(qs.get('seed'))
+    except: seed = None
+
+    # start response right away to send keep-alive header
+    headers = {}
+    headers['Connection'] = 'Keep-Alive'
+    headers['Keep-Alive'] = 'timeout=1500, max=100'
+    content_type = 'application/json; charset=utf-8'
+    headers['Content-Type'] = content_type
+    response = web.StreamResponse(headers=headers)
+    response.prepare(request)
+    response.start(request)
+
     with io.StringIO(data['left']) as left, io.StringIO(data['right']) as right:
-        smatch_api.smatch.seed = data.get('seed', None)
-        document = smatch_api.make_matched_document(left, right, False)
+        document = await processor(left, right, False, seed=seed)
         print("ok")
-    generate_document_rules(document)
-    response.status = '200 OK'
-    response.content_type = 'application/json; charset=utf-8'
-    data = json.dumps(document, indent=4)
-    print('Sending data...')
-    return data
 
-# @app.get('/api/parse_amr')
-# @app.post('/api/parse_amr')
-# def parse_amr(request, response):
-#     body = request.body.read().decode('utf8', errors='ignore')
-#     lines = body.split('\n')
-#     data = amr_reader.extract_triples(amr_reader.parse_amr_lines(lines))
-#     response.status = '200 OK'
-#     response.content_type = 'application/json; charset=utf-8'
-#     return json.dumps(data, indent=4)
+    # generate_document_rules(document)
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(threadpool, lambda document: generate_document_rules(document), document)
 
-# static content (webpage files: *.html, *.js, *.css etc.)
-@app.route('/')
-@app.route('/<path:path>')
-def static(request, response, path='index.html'):
-    return static_file(request, path, root=os.path.join(os.path.dirname(os.path.realpath(__file__)), 'static/app'))
-    # return static_file(path, root=os.path.join(os.path.dirname(os.path.realpath(__file__)), 'dest'))
+    print('Sending response...')
+    # write response data
+    response.write(json.dumps(document, indent=4, ensure_ascii=False).encode('utf8'))
+    await response.write_eof()
+    await response.drain()
+    print('Response sent!')
+
+    return response
+    # return web.Response(body=json.dumps(document, indent=4, ensure_ascii=False).encode('utf8'), content_type=content_type)
 
 
-# run(app, host='0.0.0.0', port=port, debug=False, reloader=False)
-run(app, host=args.host, port=args.port, debug=False, reloader=False)
+async def static_file(request):
+    try:
+        path = request.match_info.get('path') or 'index.html'
+        root = 'static/app'
+        with open(os.path.join(root, path), 'rb') as f:
+            content_type = 'text/plain'
+            ext = os.path.splitext(path)[1].lower()
+            # https://www.sitepoint.com/web-foundations/mime-types-complete-list/
+            if ext in ('.html', '.htm'):
+                content_type = 'text/html'
+            elif ext in ('.css'):
+                content_type = 'text/css'
+            elif ext in ('.js'):
+                content_type = 'application/javascript' # or application/x-javascript ; text/javascript ; application/ecmascript
+            elif ext in ('.json'):
+                content_type = 'application/'
+            elif ext in ('.jpg', '.jpeg'):
+                content_type = 'application/jpeg'
+            elif ext in ('.png', '.png'):
+                content_type = 'application/png'
+
+            return web.Response(body=f.read(), content_type=content_type)
+    except FileNotFoundError:
+        raise web.HTTPNotFound
+
+def init():
+    app = web.Application()
+    app.get = lambda path: (lambda fn: app.router.add_route('GET', path, fn))
+
+    app.router.add_resource(r'/api/parse_match_amr').add_route('POST', parse_match_amr)
+    app.router.add_resource(r'/api/test_data').add_route('GET', parse_test)
+    app.router.add_resource(r'/{path:.*}').add_route('GET', static_file)
+    web.run_app(app, host=args.host, port=args.port)
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description='VisualSMATCH server', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--host', type=str, default=host, help='listen host ip, 0.0.0.0 for all interfaces')
+    parser.add_argument('--port', type=int, default=port, help='listen port number')
+
+    args = parser.parse_args()
+
+    init()

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 #
@@ -21,13 +21,6 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-
-#
-# Modified by Didzis Gosko, 2016
-#
-
-
-from __future__ import print_function
 
 """
 AMR (Abstract Meaning Representation) structure
@@ -223,27 +216,37 @@ class AMR(object):
         cur_relation_name = ""
         # having unmatched quote string
         in_quote = False
+        # def looks_like_value(i, l):
+        #     end = l.find(')', i)
+        #     if -1 < l.find('(', i) < end:
+        #         return False
+        #     if -1 < l.find(' ', i, end) > end-1:
+        #         return True
+        #     return True
         line = line.strip()
         escaped = False
         for i, c in enumerate(line):
             if escaped:
                 cur_charseq.append(c)
                 escaped = False
-            elif c == "\\":
+                continue
+            if c == "\\":
                 escaped = True
-            elif c == "\"":
-                # flip in_quote value when a quote symbol is encountered
-                # insert placeholder if in_quote from last symbol
-                if in_quote and not cur_charseq:
-                    cur_charseq.append('_')
-                in_quote = not in_quote
-            elif in_quote:
-                cur_charseq.append(c)
-            elif c == " ":
+                continue
+        # for i, c in enumerate(line.strip()):
+            if c == " ":
                 # allow space in relation name
                 if state == 2:
                     cur_charseq.append(c)
+                continue
+            if c == "\"":
+                # flip in_quote value when a quote symbol is encountered
+                in_quote = not in_quote
             elif c == "(":
+                # not significant symbol if inside quote
+                if in_quote:
+                    cur_charseq.append(c)
+                    continue
                 # get the attribute name
                 # e.g :arg0 (x ...
                 # at this point we get "arg0"
@@ -256,7 +259,12 @@ class AMR(object):
                     cur_relation_name = "".join(cur_charseq).strip()
                     cur_charseq[:] = []
                 state = 1
+            # elif c == ":" and not looks_like_value(i, line):
             elif c == ":":
+                # not significant symbol if inside quote
+                if in_quote:
+                    cur_charseq.append(c)
+                    continue
                 # Last significant symbol is "/". Now we encounter ":"
                 # Example:
                 # :OR (o2 / *OR*
@@ -293,12 +301,16 @@ class AMR(object):
                         print("Error in processing", line[:i], relation_name, relation_value, file=ERROR_LOG)
                         return None
                     # if we have not seen this node name before
+                    # if node_value not in node_dict:
                     if relation_value not in node_dict:
                         node_relation_dict2[stack[-1]].append((relation_name, relation_value))
                     else:
                         node_relation_dict1[stack[-1]].append((relation_name, relation_value))
                 state = 2
             elif c == "/":
+                if in_quote:
+                    cur_charseq.append(c)
+                    continue
                 # Last significant symbol is "(". Now we encounter "/"
                 # Example:
                 # (d / default-01
@@ -339,10 +351,15 @@ class AMR(object):
                     return None
                 state = 3
             elif c == ")":
+                if in_quote:
+                    cur_charseq.append(c)
+                    continue
                 # stack should be non-empty to find upper level node
                 if len(stack) == 0:
+                    # print("Unmatched parenthesis at position", i, "in processing", line[0:i+1], file=ERROR_LOG)
+                    # return None
                     print("WARNING: Unmatched parathesis at position", i, "in processing", line[0:i+1], file=ERROR_LOG)
-                    return None
+                    continue
                 # Last significant symbol is ":". Now we encounter ")"
                 # Example:
                 # :op2 "Brown") or :op2 w)
@@ -385,6 +402,17 @@ class AMR(object):
                 # not significant symbols, so we just shift.
                 cur_charseq.append(c)
         #create data structures to initialize an AMR
+        # print('node dict:')
+        # for k,v in node_dict.items():
+        #     print('   ', k, ':', v)
+        # print('node name list:')
+        # print('   ', ', '.join(node_name_list))
+        # print('node relation dict1:')
+        # for k,v in node_relation_dict1.items():
+        #     print('   ', k,':',v)
+        # print('node relation dict2:')
+        # for k,v in node_relation_dict2.items():
+        #     print('   ', k,':',v)
         node_value_list = []
         relation_list = []
         attribute_list = []
@@ -426,19 +454,11 @@ if __name__ == "__main__":
         print("No file given", file=ERROR_LOG)
         exit(1)
     amr_count = 1
-    def process(amr):
-        global amr_count
+    for line in open(sys.argv[1]):
+        cur_line = line.strip()
+        if cur_line == "" or cur_line.startswith("#"):
+            continue
         print("AMR", amr_count, file=DEBUG_LOG)
-        current = AMR.parse_AMR_line(amr)
+        current = AMR.parse_AMR_line(cur_line)
         current.output_amr()
         amr_count += 1
-    amr = []
-    for line in (l.strip() for l in open(sys.argv[1])):
-        if not line or line[0] == '#':
-            if amr:
-                process(' '.join(amr))
-            amr = []
-        else:
-            amr.append(line)
-    if amr:
-        process(' '.join(amr))

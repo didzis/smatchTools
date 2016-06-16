@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 #
@@ -21,13 +21,6 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-
-#
-# Modified by Didzis Gosko, 2016
-#
-
-
-from __future__ import print_function
 
 """
 This script computes smatch score between two AMRs.
@@ -67,7 +60,7 @@ DEBUG_LOG = sys.stderr
 # value: the matching triple count
 match_triple_dict = {}
 
-# seed for random number generator
+# set global fixed seed for random number generator, makes smatch deterministic
 seed = None
 
 def get_amr_line(input_f):
@@ -88,14 +81,45 @@ def get_amr_line(input_f):
             else:
                 # end of current AMR
                 break
-        if line.strip().startswith("#"):
+        if line.startswith("#"):
             # ignore the comment line (starting with "#") in the AMR file
             continue
         else:
             has_content = True
-            cur_amr.append(line.strip())
-    return "".join(cur_amr)
+            cur_amr.append(line)
+    return " ".join(cur_amr)
 
+def get_amr_line2(input_f):
+    """
+    Read the file containing AMRs. AMRs are separated by a blank line.
+    Each call of get_amr_line() returns the next available AMR (in one-line form).
+    Note: this function does not verify if the AMR is valid
+
+    """
+    cur_amr = []
+    has_content = False
+    text = ""
+    tokens = ""
+    for line in input_f:
+        orig_line, line = line.rstrip(), line.strip()
+        if line == "":
+            if not has_content:
+                # empty lines before current AMR
+                continue
+            else:
+                # end of current AMR
+                break
+        if line.startswith("#"):
+            if line.startswith("# ::snt"):
+                text = line[8:]
+            elif line.startswith("# ::tok"):
+                tokens = line[8:]
+            # ignore the comment line (starting with "#") in the AMR file
+            continue
+        else:
+            has_content = True
+            cur_amr.append((line, orig_line))
+    return " ".join(line for line, orig_line in cur_amr), "\n".join(orig_line for line, orig_line in cur_amr), text or tokens
 
 def build_arg_parser():
     """
@@ -112,8 +136,10 @@ def build_arg_parser():
                              'instead of a single document-level smatch score (Default: false)')
     parser.add_argument('--pr', action='store_true', default=False,
                         help="Output precision and recall as well as the f-score. Default: false")
-    from multiprocessing import cpu_count
-    parser.add_argument('-p', type=int, default=None, help='Number of processes to use for parallelization (Default: %i)' % (cpu_count(),))
+    parser.add_argument('-w', '--reset-wiki', action='store_true', help='reset :wiki edges to -')
+    parser.add_argument('-W', '--remove-wiki', action='store_true', help='remove :wiki edges')
+    parser.add_argument('-s', '--seed', type=int, default=None, help='set fixed seed for random number generator (makes smatch deterministic)')
+    parser.add_argument('--gs', action='store_true', help='first gold, then silver')
     return parser
 
 
@@ -715,58 +741,6 @@ def compute_f(match_num, test_num, gold_num):
             print("F-score:", "0.0", file=DEBUG_LOG)
         return precision, recall, 0.00
 
-def process_amr_pair(args):
-    cur_amr1, cur_amr2, sent_num = args
-    amr1 = amr.AMR.parse_AMR_line(cur_amr1)
-    amr2 = amr.AMR.parse_AMR_line(cur_amr2)
-    prefix1 = "a"
-    prefix2 = "b"
-    # Rename node to "a1", "a2", .etc
-    amr1.rename_node(prefix1)
-    # Renaming node to "b1", "b2", .etc
-    amr2.rename_node(prefix2)
-    (instance1, attributes1, relation1) = amr1.get_triples()
-    (instance2, attributes2, relation2) = amr2.get_triples()
-    if verbose:
-        # print parse results of two AMRs
-        print("AMR pair", sent_num, file=DEBUG_LOG)
-        print("============================================", file=DEBUG_LOG)
-        print("AMR 1 (one-line):", cur_amr1, file=DEBUG_LOG)
-        print("AMR 2 (one-line):", cur_amr2, file=DEBUG_LOG)
-        print("Instance triples of AMR 1:", len(instance1), file=DEBUG_LOG)
-        print(instance1, file=DEBUG_LOG)
-        print("Attribute triples of AMR 1:", len(attributes1), file=DEBUG_LOG)
-        print(attributes1, file=DEBUG_LOG)
-        print("Relation triples of AMR 1:", len(relation1), file=DEBUG_LOG)
-        print(relation1, file=DEBUG_LOG)
-        print("Instance triples of AMR 2:", len(instance2), file=DEBUG_LOG)
-        print(instance2, file=DEBUG_LOG)
-        print("Attribute triples of AMR 2:", len(attributes2), file=DEBUG_LOG)
-        print(attributes2, file=DEBUG_LOG)
-        print("Relation triples of AMR 2:", len(relation2), file=DEBUG_LOG)
-        print(relation2, file=DEBUG_LOG)
-    (best_mapping, best_match_num) = get_best_match(instance1, attributes1, relation1,
-                                                    instance2, attributes2, relation2,
-                                                    prefix1, prefix2)
-    if verbose:
-        print("best match number", best_match_num, file=DEBUG_LOG)
-        print("best node mapping", best_mapping, file=DEBUG_LOG)
-        print("Best node mapping alignment:", print_alignment(best_mapping, instance1, instance2), file=DEBUG_LOG)
-    test_triple_num = len(instance1) + len(attributes1) + len(relation1)
-    gold_triple_num = len(instance2) + len(attributes2) + len(relation2)
-    if not single_score:
-        # if each AMR pair should have a score, compute and output it here
-        (precision, recall, best_f_score) = compute_f(best_match_num,
-                                                      test_triple_num,
-                                                      gold_triple_num)
-        print("Sentence", sent_num)
-        if pr_flag:
-            print("Precision: %.4f" % precision)
-            print("Recall: %.4f" % recall)
-        print("Smatch score: %.4f" % best_f_score)
-    # clear the matching triple dictionary for the next AMR pair
-    match_triple_dict.clear()
-    return best_match_num, test_triple_num, gold_triple_num
 
 def main(arguments):
     """
@@ -794,46 +768,119 @@ def main(arguments):
     # triple number in gold file
     total_gold_num = 0
     # sentence number
-
-    def read_amr(f1, f2):
-        sent_num = 1
-        # Read amr pairs from two files
-        while True:
-            cur_amr1 = get_amr_line(f1)
-            cur_amr2 = get_amr_line(f2)
-            if cur_amr1 == "" and cur_amr2 == "":
-                break
-            if cur_amr1 == "":
-                print("Error: File 1 has less AMRs than file 2", file=ERROR_LOG)
-                print("Ignoring remaining AMRs", file=ERROR_LOG)
-                break
-            if cur_amr2 == "":
-                print("Error: File 2 has less AMRs than file 1", file=ERROR_LOG)
-                print("Ignoring remaining AMRs", file=ERROR_LOG)
-                break
-            yield cur_amr1, cur_amr2, sent_num
-            sent_num += 1
-
-
-    amrs = read_amr(args.f[0], args.f[1])
-
-    if arguments.p is None or arguments.p > 1:
-        from multiprocessing import Pool
-        pool = Pool(processes=arguments.p or None)
-        for best_match_num, test_triple_num, gold_triple_num in pool.imap(process_amr_pair, amrs):
-            total_match_num += best_match_num
-            total_test_num += test_triple_num
-            total_gold_num += gold_triple_num
-    else:
+    sent_num = 1
+    # Read amr pairs from two files
+    import re
+    remove_wikire = re.compile(r':wiki\s+("[^"]+"|-) *')
+    reset_wikire = re.compile(r':wiki\s+("[^"]+")')
+    while True:
+        # cur_amr1 = get_amr_line(args.f[0])
+        # cur_amr2 = get_amr_line(args.f[1])
+        cur_amr1, cur_amr1_orig, text1 = get_amr_line2(args.f[0])
+        cur_amr2, cur_amr2_orig, text2 = get_amr_line2(args.f[1])
+        # print('AMR1:')
+        # print(cur_amr1)
+        # print(cur_amr1_orig)
+        # print(text1)
+        # print('AMR2:')
+        # print(cur_amr2)
+        # print(cur_amr2_orig)
+        # print(text2)
+        if cur_amr1 == "" and cur_amr2 == "":
+            break
+        if cur_amr1 == "":
+            print("Error: File 1 has less AMRs than file 2", file=ERROR_LOG)
+            print("Ignoring remaining AMRs", file=ERROR_LOG)
+            break
+        if cur_amr2 == "":
+            print("Error: File 2 has less AMRs than file 1", file=ERROR_LOG)
+            print("Ignoring remaining AMRs", file=ERROR_LOG)
+            break
+        if args.remove_wiki:
+            cur_amr1 = remove_wikire.sub('', cur_amr1, re.U | re.M)
+            cur_amr2 = remove_wikire.sub('', cur_amr2, re.U | re.M)
+        elif args.reset_wiki:
+            cur_amr1 = reset_wikire.sub('', cur_amr1, re.U | re.M)
+            cur_amr2 = reset_wikire.sub('', cur_amr2, re.U | re.M)
         try:
-            from itertools import imap
-        except ImportError:
-            imap = map
-        for best_match_num, test_triple_num, gold_triple_num in imap(process_amr_pair, amrs):
-            total_match_num += best_match_num
-            total_test_num += test_triple_num
-            total_gold_num += gold_triple_num
-
+            amr1 = amr.AMR.parse_AMR_line(cur_amr1)
+        except:
+            print("Error parsing AMR1:")
+            print(cur_amr1)
+            raise
+        try:
+            amr2 = amr.AMR.parse_AMR_line(cur_amr2)
+        except:
+            print("Error parsing AMR2:")
+            print(cur_amr2)
+            raise
+        prefix1 = "a"
+        prefix2 = "b"
+        if not amr1:
+            if arguments.gs:
+                print("Malformed right AMR:")
+            else:
+                print("Malformed left AMR:")
+            print(text1)
+            print(cur_amr1_orig)
+            quit()
+        if not amr2:
+            if arguments.gs:
+                print("Malformed left AMR:")
+            else:
+                print("Malformed right AMR:")
+            print(text2)
+            print(cur_amr2_orig)
+            quit()
+        # Rename node to "a1", "a2", .etc
+        amr1.rename_node(prefix1)
+        # Renaming node to "b1", "b2", .etc
+        amr2.rename_node(prefix2)
+        (instance1, attributes1, relation1) = amr1.get_triples()
+        (instance2, attributes2, relation2) = amr2.get_triples()
+        if verbose:
+            # print parse results of two AMRs
+            print("AMR pair", sent_num, file=DEBUG_LOG)
+            print("============================================", file=DEBUG_LOG)
+            print("AMR 1 (one-line):", cur_amr1, file=DEBUG_LOG)
+            print("AMR 2 (one-line):", cur_amr2, file=DEBUG_LOG)
+            print("Instance triples of AMR 1:", len(instance1), file=DEBUG_LOG)
+            print(instance1, file=DEBUG_LOG)
+            print("Attribute triples of AMR 1:", len(attributes1), file=DEBUG_LOG)
+            print(attributes1, file=DEBUG_LOG)
+            print("Relation triples of AMR 1:", len(relation1), file=DEBUG_LOG)
+            print(relation1, file=DEBUG_LOG)
+            print("Instance triples of AMR 2:", len(instance2), file=DEBUG_LOG)
+            print(instance2, file=DEBUG_LOG)
+            print("Attribute triples of AMR 2:", len(attributes2), file=DEBUG_LOG)
+            print(attributes2, file=DEBUG_LOG)
+            print("Relation triples of AMR 2:", len(relation2), file=DEBUG_LOG)
+            print(relation2, file=DEBUG_LOG)
+        (best_mapping, best_match_num) = get_best_match(instance1, attributes1, relation1,
+                                                        instance2, attributes2, relation2,
+                                                        prefix1, prefix2)
+        if verbose:
+            print("best match number", best_match_num, file=DEBUG_LOG)
+            print("best node mapping", best_mapping, file=DEBUG_LOG)
+            print("Best node mapping alignment:", print_alignment(best_mapping, instance1, instance2), file=DEBUG_LOG)
+        test_triple_num = len(instance1) + len(attributes1) + len(relation1)
+        gold_triple_num = len(instance2) + len(attributes2) + len(relation2)
+        if not single_score:
+            # if each AMR pair should have a score, compute and output it here
+            (precision, recall, best_f_score) = compute_f(best_match_num,
+                                                          test_triple_num,
+                                                          gold_triple_num)
+            print("Sentence", sent_num)
+            if pr_flag:
+                print("Precision: %.4f" % precision)
+                print("Recall: %.4f" % recall)
+            print("Smatch score: %.4f" % best_f_score)
+        total_match_num += best_match_num
+        total_test_num += test_triple_num
+        total_gold_num += gold_triple_num
+        # clear the matching triple dictionary for the next AMR pair
+        match_triple_dict.clear()
+        sent_num += 1
     if verbose:
         print("Total match number, total triple number in AMR 1, and total triple number in AMR 2:", file=DEBUG_LOG)
         print(total_match_num, total_test_num, total_gold_num, file=DEBUG_LOG)
@@ -842,48 +889,23 @@ def main(arguments):
     if single_score:
         (precision, recall, best_f_score) = compute_f(total_match_num, total_test_num, total_gold_num)
         if pr_flag:
-            print("Precision: %.4f" % precision)
-            print("Recall: %.4f" % recall)
-        print("Document F-score: %.4f" % best_f_score)
+            # print("Precision: %.4f" % precision)
+            # print("Recall: %.4f" % recall)
+            print("Precision: %.8f" % precision)
+            print("Recall: %.8f" % recall)
+        # print("Document F-score: %.4f" % best_f_score)
+        print("Document F-score: %.8f" % best_f_score)
     args.f[0].close()
     args.f[1].close()
 
 if __name__ == "__main__":
     parser = None
     args = None
-    # only support python version 2.5 or later
-    # if sys.version_info[0] != 2 or sys.version_info[1] < 5:
-    #     print("This script only supports python 2.5 or later. It does not support python 3.x.", file=ERROR_LOG)
-    #     exit(1)
-    if sys.version_info[0] <= 2 and sys.version_info[1] < 6:
-        print("This script only supports python 2.6 or later.", file=ERROR_LOG)
-        exit(1)
-    # use optparse if python version is 2.5 or 2.6
-    if sys.version_info[0] == 2 and sys.version_info[1] < 7:
-        import optparse
-        if len(sys.argv) == 1:
-            print("No argument given. Please run smatch.py -h to see the argument description.", file=ERROR_LOG)
-            exit(1)
-        parser = build_arg_parser2()
-        (args, opts) = parser.parse_args()
-        file_handle = []
-        if args.f is None:
-            print("smatch.py requires -f option to indicate two files \
-                                 containing AMR as input. Please run smatch.py -h to  \
-                                 see the argument description.", file=ERROR_LOG)
-            exit(1)
-        # assert there are 2 file names following -f.
-        assert(len(args.f) == 2)
-        for file_path in args.f:
-            if not os.path.exists(file_path):
-                print("Given file", args.f[0], "does not exist", file=ERROR_LOG)
-                exit(1)
-            file_handle.append(open(file_path))
-        # use opened files
-        args.f = tuple(file_handle)
     #  use argparse if python version is 2.7 or later
-    else:
-        import argparse
-        parser = build_arg_parser()
-        args = parser.parse_args()
+    import argparse
+    parser = build_arg_parser()
+    args = parser.parse_args()
+    if args.gs:
+        args.f = [args.f[1], args.f[0]]
+    seed = args.seed
     main(args)
