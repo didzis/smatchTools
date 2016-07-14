@@ -234,7 +234,7 @@ class AMR(object):
             elif c == "\"":
                 # flip in_quote value when a quote symbol is encountered
                 # insert placeholder if in_quote from last symbol
-                if in_quote and not cur_charseq:
+                if in_quote and i > 0 and line[i-1] == '"':     # for empty quotes only
                     cur_charseq.append('_')
                 in_quote = not in_quote
             elif in_quote:
