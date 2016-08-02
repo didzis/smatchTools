@@ -30,7 +30,7 @@
 <div id="main" class="fill no-sel-x">
 
 	<div class="fill" style-x="left: 210px; margin: 10px; margin-right: 0px; " ng-show="true" resizer="vertical" position="200px" visible="true" follow-bottom>
-		<div resizer-left-pane max-size="" min-size="200px" class="widget-border-x" style="outline: none">
+		<div resizer-left-pane max-size="" min-size="230px" class="widget-border-x" style="outline: none">
 
 	<div class="fill widget-border-x" style="width-x: 200px; margin: 10px; margin-right: 0px">
 		<tabset vertical="false" class="compact">
@@ -51,22 +51,25 @@
 					</label>
 					<!-- <div class="fill widget&#45;border list" style="margin&#45;top: 54px" -->
 					<!-- <div class="fill widget&#45;border list" style="margin&#45;top: 14px" -->
-					<input type="text" style="top: 132px; width: 100%" placeholder="Filter text... (press Enter)"
-						ng-model="state.filterText" ui-event="{keypress: filterKeypress}" />
-					<!-- <div class="fill widget&#45;border list" style="margin&#45;top: 96px" -->
-					<div class="fill widget-border list" style="margin-top: 182px"
-						dropzone-x="fileDrop" dropzone-valid="fileDropValid" drag-over-class="gray">
-						<div class="list-item shorten"
-							ng-class="((selectedSentence == sentence)?'selected ':'')+sentenceClass(sentence)"
-							ng-repeat="sentence in sentences" ng-click="selectSentence(sentence, $index)"
-							title="{{$index}}. {{sentence.gold.text || sentence.silver.text}}">
-							<strong>{{sentence.nr}}. [{{sentence.best_f_score*100 | number : 0 }}%]</strong> {{sentence.gold.text || sentence.silver.text }}
-							<!-- <strong>{{$index+1}}</strong>. {{sentence.gold.text}} -->
-						</div>
-						<div class="" ng-show="loadingSentences" style="position: absolute; z-index: 100; top: 50%; left: 50%">
-							<spin class="fill" ng-model="loadingSentences"
-								options="{lines:13, length:19, width:8, radius:18, corners:1.0, rotate:0, trail:60, speed:1.2, direction:1}"
-								style="z-index: 100; width: 100%; height: 100%"></spin>
+
+					<div class="fill" style="top: 160px">
+						<input type="text" style="top: 0px; width: 100%" placeholder="Filter text... (press Enter)"
+							ng-model="state.filterText" ui-event="{keypress: filterKeypress}" />
+						<!-- <div class="fill widget&#45;border list" style="margin&#45;top: 96px" -->
+						<div class="fill widget-border list" style="margin-top: 26px"
+							dropzone-x="fileDrop" dropzone-valid="fileDropValid" drag-over-class="gray">
+							<div class="list-item shorten"
+								ng-class="((selectedSentence == sentence)?'selected ':'')+sentenceClass(sentence)"
+								ng-repeat="sentence in sentences" ng-click="selectSentence(sentence, $index)"
+								title="{{$index}}. {{sentence.gold.text || sentence.silver.text}}">
+								<strong>{{sentence.nr}}. [{{sentence.best_f_score*100 | number : 0 }}%]</strong> {{sentence.gold.text || sentence.silver.text }}
+								<!-- <strong>{{$index+1}}</strong>. {{sentence.gold.text}} -->
+							</div>
+							<div class="" ng-show="loadingSentences" style="position: absolute; z-index: 100; top: 50%; left: 50%">
+								<spin class="fill" ng-model="loadingSentences"
+									options="{lines:13, length:19, width:8, radius:18, corners:1.0, rotate:0, trail:60, speed:1.2, direction:1}"
+									style="z-index: 100; width: 100%; height: 100%"></spin>
+							</div>
 						</div>
 					</div>
 				</div>
